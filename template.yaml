@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: note-business Slack Bot - ADHD向けnote有料記事ビジネス自動化
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Runtime: python3.11
+    Environment:
+      Variables:
+        SLACK_BOT_TOKEN: !Ref SlackBotToken
+        SLACK_SIGNING_SECRET: !Ref SlackSigningSecret
+        ANTHROPIC_API_KEY: !Ref AnthropicApiKey
+        X_API_KEY: !Ref XApiKey
+        X_API_KEY_SECRET: !Ref XApiKeySecret
+        X_ACCESS_TOKEN: !Ref XAccessToken
+        X_ACCESS_TOKEN_SECRET: !Ref XAccessTokenSecret
+
+Parameters:
+  SlackBotToken:
+    Type: String
+    Description: Slack Bot Token (xoxb-xxx)
+    NoEcho: true
+  SlackSigningSecret:
+    Type: String
+    Description: Slack Signing Secret
+    NoEcho: true
+  AnthropicApiKey:
+    Type: String
+    Description: Anthropic API Key
+    NoEcho: true
+  XApiKey:
+    Type: String
+    Description: X API Key
+    NoEcho: true
+  XApiKeySecret:
+    Type: String
+    Description: X API Key Secret
+    NoEcho: true
+  XAccessToken:
+    Type: String
+    Description: X Access Token
+    NoEcho: true
+  XAccessTokenSecret:
+    Type: String
+    Description: X Access Token Secret
+    NoEcho: true
+
+Resources:
+  # Slack イベント処理 Lambda
+  SlackBotFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: note-business-slack-bot
+      CodeUri: src/
+      Handler: slack.app.lambda_handler
+      Events:
+        SlackEvents:
+          Type: Api
+          Properties:
+            Path: /slack/events
+            Method: POST
+
+  # 定期実行: トレンド収集 (毎日 8:00 JST)
+  DailyTrendFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: note-business-daily-trend
+      CodeUri: src/
+      Handler: scheduled.daily_trend.handler
+      Timeout: 300
+      Events:
+        DailyTrend:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 23 * * ? *)  # UTC 23:00 = JST 8:00
+            Description: Daily trend collection
+
+  # 定期実行: X投稿提案 (毎日 12:00 JST)
+  DailyXPostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: note-business-daily-xpost
+      CodeUri: src/
+      Handler: scheduled.daily_xpost.handler
+      Timeout: 300
+      Events:
+        DailyXPost:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 3 * * ? *)  # UTC 3:00 = JST 12:00
+            Description: Daily X post suggestion
+
+  # 週次実行: 振り返り (毎週月曜 9:00 JST)
+  WeeklyReflectionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: note-business-weekly-reflection
+      CodeUri: src/
+      Handler: scheduled.weekly_reflection.handler
+      Timeout: 600
+      Events:
+        WeeklyReflection:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 0 ? * MON *)  # UTC 0:00 Mon = JST 9:00 Mon
+            Description: Weekly reflection
+
+Outputs:
+  SlackBotApi:
+    Description: "API Gateway endpoint URL for Slack Bot"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/slack/events"

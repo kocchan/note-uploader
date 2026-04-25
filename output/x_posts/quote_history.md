@@ -10,6 +10,12 @@
 | 日時 | アカウント | 元ツイートURL | 引用ツイート内容 |
 |------|-----------|---------------|-----------------|
 | 2026-04-25 | @paya_paya_kun | https://x.com/paya_paya_kun/status/2045466654575079869 | 「これ、まさに僕のことだ...!」（前回記事宣伝時） |
+| 2026-04-25 | @Neuro_Logic777 | https://x.com/Neuro_Logic777/status/2047254161142808935 | 「Claudeに今日やる最小タスク1つを聞く...」 |
+| 2026-04-25 | @awawa_adhd | https://x.com/awawa_adhd/status/2045292935969898827 | 「Claude Projectsに今やってることを...」 |
+| 2026-04-25 | @nasiken | https://x.com/nasiken/status/1846311870216786074 | 「報酬系の障害、Claudeに分解して...」 |
+| 2026-04-25 | @hattatsukoryu | https://x.com/hattatsukoryu/status/2041874497121481061 | 「努力不足じゃなく適職ミス、仕事のやり方をAIで...」 |
+| 2026-04-25 | @wan_line_ | https://x.com/wan_line_/status/1891436922389794903 | 「ChatGPTとClaude両方使ってる、使い分け...」 |
+| 2026-04-25 | @rin_rinnak | https://x.com/rin_rinnak/status/2045129457581936717 | 「Claudeに抜け漏れない?って確認...」 |
 
 ---
 
@@ -18,6 +24,12 @@
 | アカウント | 最終引用日 | 次回可能日 |
 |-----------|-----------|-----------|
 | @paya_paya_kun | 2026-04-25 | 2026-05-02 |
+| @Neuro_Logic777 | 2026-04-25 | 2026-05-02 |
+| @awawa_adhd | 2026-04-25 | 2026-05-02 |
+| @nasiken | 2026-04-25 | 2026-05-02 |
+| @hattatsukoryu | 2026-04-25 | 2026-05-02 |
+| @wan_line_ | 2026-04-25 | 2026-05-02 |
+| @rin_rinnak | 2026-04-25 | 2026-05-02 |
 
 ---
 
