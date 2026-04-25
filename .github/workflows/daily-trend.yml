@@ -30,12 +30,12 @@ jobs:
       - name: Install dependencies
         run: |
           npm install -g @anthropic-ai/claude-code
-          pip install slack-sdk
 
       - name: Run Strategy Planner Agent
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_TEAM_ID: ${{ secrets.SLACK_TEAM_ID }}
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
         run: |
           claude -p "
@@ -46,9 +46,10 @@ jobs:
           1. rules/strategy-rules.md を読んで戦略ルールを確認
           2. rules/ai-learnings.md を読んで過去の学びを確認
           3. ADHD × AI活用をテーマに、記事テーマを3案作成
-          4. /slack-ask スキルの手順に従って、Slackにテーマ案を投稿
+          4. Slack MCP を使って #note-business チャンネル（$SLACK_CHANNEL）に投稿
 
           ## テーマ案の形式
+
           各テーマには以下を含める：
           - タイトル
           - ターゲット
@@ -57,16 +58,48 @@ jobs:
           - 競合状況（多/中/少）
           - 選んだ理由
 
-          ## 重要
-          - /slack-ask の SKILL.md を読んで、themes タイプの形式で投稿すること
-          - リアクション 1️⃣ 2️⃣ 3️⃣ 🔄 ⏸️ を追加すること
-          - output/pending/ にJSONを保存すること
-          " --dangerously-skip-permissions
+          ## Slack 投稿形式
 
-      - name: Commit pending data
+          以下の形式でメッセージを投稿:
+
+          ---
+          📝 **本日のテーマ提案**
+
+          **1️⃣ テーマ名**
+          - ターゲット: ...
+          - 提供価値: ...
+          - 需要: 高 / 競合: 中
+          - 理由: ...
+
+          **2️⃣ テーマ名**
+          ...
+
+          **3️⃣ テーマ名**
+          ...
+
+          リアクションで選択してください！
+          🔄 再提案 / ⏸️ 保留
+          ---
+
+          ## 手順詳細
+
+          1. slack_post_message でメッセージを投稿
+          2. 投稿後、slack_add_reaction で以下のリアクションを追加:
+             - one (1️⃣)
+             - two (2️⃣)
+             - three (3️⃣)
+             - arrows_counterclockwise (🔄)
+             - double_vertical_bar (⏸️)
+
+          ## 重要
+          - 必ず Slack MCP のツールを使うこと
+          - チャンネルID: $SLACK_CHANNEL
+          " --mcp-config mcp.json --dangerously-skip-permissions
+
+      - name: Commit any updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add output/pending/ || true
-          git diff --staged --quiet || git commit -m "Add theme suggestions $(date +%Y-%m-%d)"
+          git add output/ rules/ || true
+          git diff --staged --quiet || git commit -m "Update from daily trend $(date +%Y-%m-%d)"
           git push || echo "Nothing to push"

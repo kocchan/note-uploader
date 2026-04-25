@@ -30,12 +30,12 @@ jobs:
       - name: Install dependencies
         run: |
           npm install -g @anthropic-ai/claude-code
-          pip install slack-sdk
 
       - name: Run Reflection Agent
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_TEAM_ID: ${{ secrets.SLACK_TEAM_ID }}
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
         run: |
           claude -p "
@@ -47,7 +47,7 @@ jobs:
           2. rules/ai-learnings.md を読んで過去の学びを確認
           3. rules/strategy-rules.md を読んで現在の戦略を確認
           4. 週次振り返りレポートを作成
-          5. /slack-ask スキルの手順に従って、Slackにレポートを投稿
+          5. Slack MCP を使って #note-business チャンネル（$SLACK_CHANNEL）に投稿
 
           ## レポートに含める内容
           - サマリー（2-3文）
@@ -57,16 +57,51 @@ jobs:
           - 来週の注力ポイント
           - 戦略更新の提案（あれば）
 
+          ## Slack 投稿形式
+
+          以下の形式でメッセージを投稿:
+
+          ---
+          📊 **週次振り返りレポート**
+
+          **サマリー**
+          ...
+
+          **✅ 達成したこと**
+          - ...
+
+          **⚠️ 課題**
+          - ...
+
+          **💡 学び**
+          - ...
+
+          **🎯 来週の注力ポイント**
+          - ...
+
+          **📝 戦略更新の提案**
+          - ...
+
+          リアクションで対応を選択してください！
+          ---
+
+          ## 手順詳細
+
+          1. slack_post_message でメッセージを投稿
+          2. 投稿後、slack_add_reaction で以下のリアクションを追加:
+             - memo (📝) - 学びをai-learnings.mdに追記
+             - white_check_mark (✅) - 戦略ルールを更新
+             - thumbsup (👍) - 確認のみ
+
           ## 重要
-          - /slack-ask の SKILL.md を読んで、report タイプの形式で投稿すること
-          - リアクション 📝 ✅ 👍 を追加すること
-          - output/pending/ にJSONを保存すること
-          " --dangerously-skip-permissions
+          - 必ず Slack MCP のツールを使うこと
+          - チャンネルID: $SLACK_CHANNEL
+          " --mcp-config mcp.json --dangerously-skip-permissions
 
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add output/ || true
+          git add output/ rules/ || true
           git diff --staged --quiet || git commit -m "Add weekly reflection $(date +%Y-%m-%d)"
           git push || echo "Nothing to push"

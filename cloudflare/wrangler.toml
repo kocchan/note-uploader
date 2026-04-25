@@ -1,0 +1,11 @@
+name = "note-business-slack-worker"
+main = "slack-webhook-worker.js"
+compatibility_date = "2024-01-01"
+
+# 環境変数は Cloudflare Dashboard で設定するか、
+# wrangler secret put GITHUB_PAT
+# wrangler secret put SLACK_SIGNING_SECRET
+# で設定してください
+
+[vars]
+GITHUB_REPO = "kocchan/note-uploader"

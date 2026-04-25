@@ -30,12 +30,13 @@ jobs:
       - name: Install dependencies
         run: |
           npm install -g @anthropic-ai/claude-code
-          pip install slack-sdk
+          pip install tweepy
 
       - name: Run X Manager Agent
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_TEAM_ID: ${{ secrets.SLACK_TEAM_ID }}
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
         run: |
           claude -p "
@@ -47,19 +48,46 @@ jobs:
           2. rules/strategy-rules.md を読んで戦略を確認
           3. output/articles/ フォルダを確認し、宣伝する記事があるか確認
           4. ツイート案を2-3個作成（記事があれば宣伝ツイート、なければ日常ツイート）
-          5. /slack-ask スキルの手順に従って、Slackにツイート案を投稿
+          5. Slack MCP を使って #note-business チャンネル（$SLACK_CHANNEL）に投稿
+
+          ## Slack 投稿形式
+
+          以下の形式でメッセージを投稿:
+
+          ---
+          🐦 **本日のツイート提案**
+
+          【案1】📢 記事宣伝
+          \`\`\`
+          ツイート本文...
+          \`\`\`
+
+          【案2】💡 日常ツイート
+          \`\`\`
+          ツイート本文...
+          \`\`\`
+
+          ✅ 承認 / ❌ 却下 / ✏️ 修正依頼
+          ---
+
+          ## 手順詳細
+
+          1. slack_post_message でメッセージを投稿
+          2. 投稿後、slack_add_reaction で以下のリアクションを追加:
+             - white_check_mark (✅)
+             - x (❌)
+             - pencil (✏️)
 
           ## 重要
-          - /slack-ask の SKILL.md を必ず読んで、正しい形式でSlackに投稿すること
-          - 環境変数 SLACK_BOT_TOKEN と SLACK_CHANNEL を使用すること
-          - output/pending/ にJSONを保存すること
-          - Slackに投稿したらこのタスクは完了（人間の承認は別ワークフローで処理）
-          " --dangerously-skip-permissions
+          - 必ず Slack MCP のツールを使うこと
+          - チャンネルID: $SLACK_CHANNEL
+          - 投稿が完了したらこのタスクは終了（人間の承認は別ワークフローで処理）
+          " --mcp-config mcp.json --dangerously-skip-permissions
 
-      - name: Commit pending data
+      - name: Commit any updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add output/pending/ || true
-          git diff --staged --quiet || git commit -m "Add pending tweets $(date +%Y-%m-%d)"
+          git add output/ || true
+          git diff --staged --quiet || git commit -m "Update from daily xpost $(date +%Y-%m-%d)"
           git push || echo "Nothing to push"

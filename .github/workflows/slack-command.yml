@@ -1,0 +1,83 @@
+name: Handle Slack Command
+
+on:
+  repository_dispatch:
+    types: [slack-command]
+
+env:
+  TZ: Asia/Tokyo
+
+jobs:
+  handle-command:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          pip install tweepy
+
+      - name: Handle Slack command
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_TEAM_ID: ${{ secrets.SLACK_TEAM_ID }}
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_KEY_SECRET: ${{ secrets.X_API_KEY_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+        run: |
+          # イベントペイロードを環境変数に設定
+          export SLACK_CHANNEL="${{ github.event.client_payload.channel }}"
+          export SLACK_USER="${{ github.event.client_payload.user }}"
+          export SLACK_TEXT="${{ github.event.client_payload.text }}"
+          export SLACK_TS="${{ github.event.client_payload.ts }}"
+          export SLACK_THREAD_TS="${{ github.event.client_payload.thread_ts }}"
+
+          claude -p "
+          Slack で @note-bot 宛にメッセージが送信されました。
+
+          ## 受信内容
+          - チャンネル: $SLACK_CHANNEL
+          - ユーザー: $SLACK_USER
+          - メッセージ: $SLACK_TEXT
+          - スレッドTS: $SLACK_THREAD_TS
+
+          ## タスク
+          1. メッセージ内容を解析して、ユーザーが何を求めているか理解する
+          2. 適切なアクションを実行する:
+             - 「ツイートして」「投稿して」→ ツイート案を作成してSlackに返信
+             - 「テーマ提案」「ネタ」→ テーマ案を作成してSlackに返信
+             - 「状況」「ステータス」→ 現在の状況をSlackに返信
+             - その他 → 適切に対応
+          3. Slack MCP の slack_reply_to_thread を使ってスレッドに返信する
+
+          ## ルール参照
+          - rules/x-posting-rules.md
+          - rules/strategy-rules.md
+
+          ## 重要
+          - 必ずスレッドに返信すること（thread_ts: $SLACK_THREAD_TS）
+          - 丁寧だが簡潔に返信すること
+          " --mcp-config mcp.json --dangerously-skip-permissions
+
+      - name: Commit any changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add output/ || true
+          git diff --staged --quiet || git commit -m "Update from Slack command $(date +%Y-%m-%d\ %H:%M)"
+          git push || echo "Nothing to push"

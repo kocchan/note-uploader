@@ -1,0 +1,94 @@
+name: Handle Slack Reaction
+
+on:
+  repository_dispatch:
+    types: [slack-reaction]
+
+env:
+  TZ: Asia/Tokyo
+
+jobs:
+  handle-reaction:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          pip install tweepy
+
+      - name: Handle Slack reaction
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_TEAM_ID: ${{ secrets.SLACK_TEAM_ID }}
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_KEY_SECRET: ${{ secrets.X_API_KEY_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+        run: |
+          # イベントペイロードを環境変数に設定
+          export SLACK_CHANNEL="${{ github.event.client_payload.channel }}"
+          export SLACK_MESSAGE_TS="${{ github.event.client_payload.message_ts }}"
+          export SLACK_REACTION="${{ github.event.client_payload.reaction }}"
+          export SLACK_USER="${{ github.event.client_payload.user }}"
+
+          claude -p "
+          Slack でリアクションが追加されました。
+
+          ## リアクション情報
+          - チャンネル: $SLACK_CHANNEL
+          - メッセージTS: $SLACK_MESSAGE_TS
+          - リアクション: $SLACK_REACTION
+          - ユーザー: $SLACK_USER
+
+          ## タスク
+
+          ### リアクションの種類に応じた処理:
+
+          #### ✅ (white_check_mark) - 承認
+          1. Slack MCP の slack_get_channel_history でメッセージ内容を取得
+          2. メッセージからツイート案を抽出
+          3. /x-post スキルの SKILL.md を読んで手順を確認
+          4. X に投稿
+          5. Slack MCP の slack_reply_to_thread で「✅ 投稿完了」と返信
+          6. output/x_posts/post_history.md に履歴を追記
+
+          #### ❌ (x) - 却下
+          1. Slack MCP の slack_reply_to_thread で「❌ 却下しました」と返信
+
+          #### ✏️ (pencil) - 修正依頼
+          1. Slack MCP の slack_reply_to_thread で「✏️ 修正案を作成中...」と返信
+          2. 元のツイートを改善した案を3つ作成
+          3. 新しい案をスレッドに投稿
+
+          #### 1️⃣ 2️⃣ 3️⃣ (one, two, three) - テーマ選択
+          1. 選択されたテーマを特定
+          2. Slack MCP の slack_reply_to_thread で確認メッセージを返信
+
+          ## 重要
+          - 必ずスレッドに返信すること（thread_ts は元メッセージのts）
+          - X投稿は /x-post スキルの手順に従うこと
+          - 投稿成功・失敗を必ずSlackに報告すること
+          " --mcp-config mcp.json --dangerously-skip-permissions
+
+      - name: Commit any changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add output/ || true
+          git diff --staged --quiet || git commit -m "Update from Slack reaction $(date +%Y-%m-%d\ %H:%M)"
+          git push || echo "Nothing to push"
