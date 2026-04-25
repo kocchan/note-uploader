@@ -61,18 +61,23 @@ jobs:
 
           メッセージを解析して、以下のどれに該当するか判断してください：
 
-          ### 1. スキル呼び出し（/で始まるコマンド）
+          ### 1. スキル呼び出し
 
-          メッセージに /スキル名 が含まれている場合、該当スキルを実行：
+          メッセージの内容から、該当するスキルを判断して実行：
 
-          | コマンド | スキルファイル | 説明 |
-          |---------|--------------|------|
-          | /x-post | .claude/skills/x-post/SKILL.md | ツイートをXに投稿 |
-          | /x-promotion | .claude/skills/x-promotion/SKILL.md | 記事宣伝ツイート作成 |
-          | /x-engagement | .claude/skills/x-engagement/SKILL.md | 引用RT作成 |
-          | /trend-collect | .claude/skills/trend-collect/SKILL.md | トレンド収集 |
-          | /create-outline | .claude/skills/create-outline/SKILL.md | 記事構成作成 |
-          | /reflection | .claude/skills/reflection/SKILL.md | 振り返り |
+          | スキル | スキルファイル | 明示的コマンド | 自然言語の例 |
+          |-------|--------------|--------------|-------------|
+          | X投稿 | .claude/skills/x-post/SKILL.md | /x-post | 「投稿して」「ツイートして」「Xに投げて」 |
+          | 記事宣伝 | .claude/skills/x-promotion/SKILL.md | /x-promotion | 「記事を宣伝」「記事の宣伝ツイート」「プロモーション」 |
+          | 引用RT | .claude/skills/x-engagement/SKILL.md | /x-engagement | 「引用RT」「引用リツイート」「エンゲージメント」 |
+          | トレンド | .claude/skills/trend-collect/SKILL.md | /trend-collect | 「トレンド調べて」「トレンド収集」「今何が流行ってる」 |
+          | 記事構成 | .claude/skills/create-outline/SKILL.md | /create-outline | 「構成作って」「アウトライン」「記事の骨子」 |
+          | 振り返り | .claude/skills/reflection/SKILL.md | /reflection | 「振り返り」「反省」「学びをまとめて」 |
+
+          **判断基準**:
+          - /コマンド が明示されていればそのスキルを実行
+          - 明示されていなくても、メッセージの意図から最適なスキルを判断
+          - 判断できない場合は、ユーザーに確認するか、最も近いと思われるスキルを実行
 
           **手順**: 該当する SKILL.md を読んで、その指示に従って実行する。
 
