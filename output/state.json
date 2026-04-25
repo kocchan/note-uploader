@@ -1,0 +1,32 @@
+{
+  "current_phase": "published",
+  "selected_theme": "Claude×ADHD脳内整理術",
+  "article_folder": "20260426_Claude×ADHD",
+  "intent_doc": "output/articles/20260426_Claude×ADHD/intent.md",
+  "workflow": {
+    "trend": "completed",
+    "analysis": "skipped",
+    "outline": "completed",
+    "draft": "completed",
+    "review": "completed",
+    "published": "completed",
+    "reflection": "pending"
+  },
+  "x_workflow": {
+    "engagement": "pending",
+    "promotion": "completed"
+  },
+  "last_updated": "2026-04-25T18:00:00Z",
+  "history": [
+    {
+      "action": "trend-collect",
+      "timestamp": "2026-04-25T18:00:00Z",
+      "output": "output/articles/20260426_Claude×ADHD/intent.md"
+    }
+  ],
+  "previous_article": {
+    "folder": "20260425_先延ばし攻略",
+    "url": "https://note.com/posukeai/n/n9d41915816f2",
+    "status": "published"
+  }
+}
