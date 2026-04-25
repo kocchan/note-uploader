@@ -17,38 +17,56 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install dependencies
         run: |
-          pip install anthropic slack-sdk
+          npm install -g @anthropic-ai/claude-code
+          pip install slack-sdk
 
-      - name: Generate reflection report
+      - name: Run Reflection Agent
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          python scripts/generate_reflection.py > reflection.json
-          cat reflection.json
-
-      - name: Post to Slack
-        env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
         run: |
-          python scripts/post_reflection_to_slack.py reflection.json
+          claude -p "
+          あなたは振り返りエージェントです。以下のタスクを実行してください：
 
-      - name: Save reflection
-        run: |
-          mkdir -p output/strategy
-          cp reflection.json output/strategy/$(date +%Y%m%d)_reflection.json
+          ## 手順
+
+          1. output/x_posts/post_history.md を読んで投稿履歴を確認
+          2. rules/ai-learnings.md を読んで過去の学びを確認
+          3. rules/strategy-rules.md を読んで現在の戦略を確認
+          4. 週次振り返りレポートを作成
+          5. /slack-ask スキルの手順に従って、Slackにレポートを投稿
+
+          ## レポートに含める内容
+          - サマリー（2-3文）
+          - 達成したこと
+          - 課題
+          - 学び
+          - 来週の注力ポイント
+          - 戦略更新の提案（あれば）
+
+          ## 重要
+          - /slack-ask の SKILL.md を読んで、report タイプの形式で投稿すること
+          - リアクション 📝 ✅ 👍 を追加すること
+          - output/pending/ にJSONを保存すること
+          " --dangerously-skip-permissions
 
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add output/
+          git add output/ || true
           git diff --staged --quiet || git commit -m "Add weekly reflection $(date +%Y-%m-%d)"
           git push || echo "Nothing to push"

@@ -1,10 +1,14 @@
 name: Check Slack Reactions & Execute
 
 on:
+  # Slack Workflow Builder からのトリガー
+  repository_dispatch:
+    types: [slack-reaction]
+  # 手動実行用
+  workflow_dispatch:
+  # バックアップ: 1時間ごとにもチェック
   schedule:
-    # 毎時0分にチェック (JST 9:00-23:00 のみ実行するようにスクリプト内で制御)
     - cron: '0 * * * *'
-  workflow_dispatch:  # 手動実行用
 
 env:
   TZ: Asia/Tokyo
@@ -17,17 +21,91 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install dependencies
         run: |
-          pip install slack-sdk tweepy python-dotenv
+          npm install -g @anthropic-ai/claude-code
+          pip install slack-sdk tweepy
 
-      - name: Check Slack reactions and execute
+      - name: Check Slack reactions
+        id: check
         env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+        run: |
+          python3 << 'EOF'
+          import os
+          import json
+          import glob
+          from slack_sdk import WebClient
+
+          client = WebClient(token=os.environ.get("SLACK_BOT_TOKEN"))
+          channel = os.environ.get("SLACK_CHANNEL")
+
+          # 承認待ちファイルを確認
+          pending_files = glob.glob("output/pending/*.json")
+          approved_tweets = []
+
+          for filepath in pending_files:
+              try:
+                  with open(filepath, 'r', encoding='utf-8') as f:
+                      data = json.load(f)
+              except:
+                  continue
+
+              if data.get("type") != "tweets":
+                  continue
+
+              message_ts = data.get("message_ts")
+              if not message_ts:
+                  continue
+
+              # リアクションを取得
+              try:
+                  result = client.reactions_get(channel=channel, timestamp=message_ts)
+                  reactions = result.get("message", {}).get("reactions", [])
+
+                  for reaction in reactions:
+                      # ✅ (white_check_mark) が人間によって追加された場合
+                      if reaction["name"] == "white_check_mark" and reaction["count"] > 1:
+                          # このツイートは承認された
+                          for tweet in data.get("content", []):
+                              approved_tweets.append({
+                                  "text": tweet.get("text", ""),
+                                  "filepath": filepath,
+                                  "message_ts": message_ts
+                              })
+                          break
+              except Exception as e:
+                  print(f"Error checking reactions: {e}")
+
+          # 結果を出力
+          if approved_tweets:
+              print(f"Found {len(approved_tweets)} approved tweets")
+              with open("approved_tweets.json", 'w', encoding='utf-8') as f:
+                  json.dump(approved_tweets, f, ensure_ascii=False, indent=2)
+              # GitHub Actions の新しい出力形式
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write("has_approved=true\n")
+          else:
+              print("No approved tweets found")
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write("has_approved=false\n")
+          EOF
+
+      - name: Post approved tweets
+        if: steps.check.outputs.has_approved == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
           X_API_KEY: ${{ secrets.X_API_KEY }}
@@ -35,12 +113,26 @@ jobs:
           X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
           X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
         run: |
-          python scripts/check_slack_reactions.py
+          claude -p "
+          承認されたツイートをXに投稿してください。
+
+          ## 手順
+
+          1. approved_tweets.json を読んで承認されたツイートを確認
+          2. /x-post スキルを使って各ツイートをXに投稿
+          3. 投稿成功したら、Slackのスレッドに「✅ 投稿完了」と返信
+          4. output/x_posts/post_history.md に投稿履歴を追記
+          5. 処理済みのpendingファイルを削除
+
+          ## 重要
+          - /x-post の SKILL.md を読んで正しく投稿すること
+          - 投稿に失敗した場合はSlackに通知すること
+          " --dangerously-skip-permissions
 
       - name: Commit updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add output/
+          git add output/ || true
           git diff --staged --quiet || git commit -m "Update post history $(date +%Y-%m-%d\ %H:%M)"
           git push || echo "Nothing to push"

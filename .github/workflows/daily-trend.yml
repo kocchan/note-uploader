@@ -17,38 +17,56 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install dependencies
         run: |
-          pip install anthropic slack-sdk
+          npm install -g @anthropic-ai/claude-code
+          pip install slack-sdk
 
-      - name: Generate theme suggestions
+      - name: Run Strategy Planner Agent
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          python scripts/generate_themes.py > themes.json
-          cat themes.json
-
-      - name: Post themes to Slack
-        env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
         run: |
-          python scripts/post_themes_to_slack.py themes.json
+          claude -p "
+          あなたは戦略プランナーエージェントです。以下のタスクを実行してください：
 
-      - name: Save theme data
-        run: |
-          mkdir -p output/pending_themes
-          cp themes.json output/pending_themes/$(date +%Y%m%d).json
+          ## 手順
 
-      - name: Commit
+          1. rules/strategy-rules.md を読んで戦略ルールを確認
+          2. rules/ai-learnings.md を読んで過去の学びを確認
+          3. ADHD × AI活用をテーマに、記事テーマを3案作成
+          4. /slack-ask スキルの手順に従って、Slackにテーマ案を投稿
+
+          ## テーマ案の形式
+          各テーマには以下を含める：
+          - タイトル
+          - ターゲット
+          - 提供価値
+          - 需要レベル（高/中/低）
+          - 競合状況（多/中/少）
+          - 選んだ理由
+
+          ## 重要
+          - /slack-ask の SKILL.md を読んで、themes タイプの形式で投稿すること
+          - リアクション 1️⃣ 2️⃣ 3️⃣ 🔄 ⏸️ を追加すること
+          - output/pending/ にJSONを保存すること
+          " --dangerously-skip-permissions
+
+      - name: Commit pending data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add output/
-          git diff --staged --quiet || git commit -m "Add theme suggestions for $(date +%Y-%m-%d)"
+          git add output/pending/ || true
+          git diff --staged --quiet || git commit -m "Add theme suggestions $(date +%Y-%m-%d)"
           git push || echo "Nothing to push"

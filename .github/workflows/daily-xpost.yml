@@ -17,39 +17,49 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install dependencies
         run: |
-          pip install anthropic slack-sdk python-dotenv
+          npm install -g @anthropic-ai/claude-code
+          pip install slack-sdk
 
-      - name: Generate tweet suggestions
-        id: generate
+      - name: Run X Manager Agent
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          python scripts/generate_tweets.py > tweets.json
-          cat tweets.json
-
-      - name: Post to Slack
-        env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
         run: |
-          python scripts/post_to_slack.py tweets.json
+          claude -p "
+          あなたはX運用エージェントです。以下のタスクを実行してください：
 
-      - name: Save tweet data for later
-        run: |
-          mkdir -p output/pending_tweets
-          cp tweets.json output/pending_tweets/$(date +%Y%m%d).json
+          ## 手順
 
-      - name: Commit pending tweets
+          1. rules/x-posting-rules.md を読んでルールを確認
+          2. rules/strategy-rules.md を読んで戦略を確認
+          3. output/articles/ フォルダを確認し、宣伝する記事があるか確認
+          4. ツイート案を2-3個作成（記事があれば宣伝ツイート、なければ日常ツイート）
+          5. /slack-ask スキルの手順に従って、Slackにツイート案を投稿
+
+          ## 重要
+          - /slack-ask の SKILL.md を必ず読んで、正しい形式でSlackに投稿すること
+          - 環境変数 SLACK_BOT_TOKEN と SLACK_CHANNEL を使用すること
+          - output/pending/ にJSONを保存すること
+          - Slackに投稿したらこのタスクは完了（人間の承認は別ワークフローで処理）
+          " --dangerously-skip-permissions
+
+      - name: Commit pending data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add output/pending_tweets/
-          git diff --staged --quiet || git commit -m "Add pending tweets for $(date +%Y-%m-%d)"
+          git add output/pending/ || true
+          git diff --staged --quiet || git commit -m "Add pending tweets $(date +%Y-%m-%d)"
           git push || echo "Nothing to push"
