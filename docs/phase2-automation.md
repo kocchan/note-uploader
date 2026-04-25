@@ -2,155 +2,206 @@
 
 ## 概要
 
-GitHub Actions + Slack Bolt を使って、エージェントが自律的に動作し、人間レビューをSlack上で完結させる。
+AWS Lambda + Slack Bolt を使って、エージェントが自律的に動作し、人間レビューをSlack上で完結させる。
 
 ## 全体アーキテクチャ
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     GitHub Actions (Scheduler)                  │
+│                 AWS Lambda (EventBridge Scheduler)              │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────────────┐ │
-│  │ 毎日 8:00    │ │ 毎週月曜     │ │ Slack Webhook トリガー   │ │
-│  │ トレンド収集 │ │ 振り返り     │ │ オンデマンド実行         │ │
+│  │ 毎日 8:00    │ │ 毎日 12:00   │ │ 毎週月曜 9:00            │ │
+│  │ トレンド収集 │ │ X投稿提案    │ │ 振り返り                 │ │
 │  └──────┬───────┘ └──────┬───────┘ └────────────┬─────────────┘ │
 └─────────┼────────────────┼──────────────────────┼───────────────┘
           │                │                      │
           ▼                ▼                      ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Claude API / Claude Code                     │
+│                    Claude API (claude-3-5-sonnet)               │
 │                                                                 │
-│  スキル実行 → 成果物生成 → レビュー依頼をSlackに送信            │
+│  ルール読み込み → 成果物生成 → Slackに送信                       │
 └─────────────────────────────────────────────────────────────────┘
           │
           ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Slack Bolt App (常駐)                        │
+│              Slack Bolt App (Lambda + API Gateway)              │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │ #note-business チャンネル                                │   │
 │  │                                                         │   │
-│  │ 🤖 Bot: 新しい記事テーマを提案します                      │   │
+│  │ 🤖 Bot: ツイート投稿の提案                               │   │
 │  │ ┌─────────────────────────────────────────────────────┐ │   │
-│  │ │ テーマ: Claude × ADHD仕事術                         │ │   │
-│  │ │ 理由: トレンド分析の結果...                          │ │   │
+│  │ │ ADHDの「あとでやる」は永遠に来ない...😇              │ │   │
+│  │ │ だからChatGPTに外注することにした!                   │ │   │
 │  │ │                                                     │ │   │
-│  │ │ [✅ 承認] [✏️ 修正] [❌ 却下]                        │ │   │
+│  │ │ [✅ このまま投稿] [✏️ 修正する] [❌ キャンセル]       │ │   │
 │  │ └─────────────────────────────────────────────────────┘ │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                 │
-│  承認 → GitHub Actions トリガー → 次のステップ実行             │
+│  ボタン押下 → Lambda実行 → X API投稿 → 結果をSlackに通知       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## コンポーネント
+---
 
-### 1. GitHub Actions ワークフロー
+## 実装済みコンポーネント
 
-```
-.github/workflows/
-├── daily-trend.yml        # 毎日: トレンド収集 → テーマ提案
-├── daily-x-post.yml       # 毎日: X投稿提案
-├── weekly-reflection.yml  # 毎週: 振り返り → 戦略更新
-├── on-review-approved.yml # Slack承認時: 次ステップ実行
-└── manual-trigger.yml     # 手動実行用
-```
-
-### 2. Slack Bolt App
+### ディレクトリ構成
 
 ```
-src/slack/
-├── app.py                 # メインアプリ
-├── handlers/
-│   ├── review_handlers.py # ボタン押下時の処理
-│   ├── commands.py        # スラッシュコマンド
-│   └── modals.py          # 修正用モーダル
-├── messages/
-│   ├── templates.py       # メッセージテンプレート
-│   └── blocks.py          # Slack Block Kit
-└── utils/
-    ├── github_trigger.py  # GitHub Actions トリガー
-    └── state.py           # 状態管理
+312_note/
+├── src/
+│   ├── slack/
+│   │   ├── app.py                 # Slack Bolt メインアプリ (Lambda対応)
+│   │   └── handlers/
+│   │       └── x_post_handler.py  # X投稿処理・レビューUI
+│   ├── scheduled/
+│   │   ├── daily_trend.py         # 毎日8:00: トレンド収集→テーマ提案
+│   │   ├── daily_xpost.py         # 毎日12:00: X投稿案の生成
+│   │   └── weekly_reflection.py   # 毎週月曜9:00: 振り返りレポート
+│   └── requirements.txt           # Python依存パッケージ
+├── template.yaml                  # AWS SAM テンプレート
+└── docs/
+    ├── phase2-automation.md       # 本ドキュメント
+    └── deploy-guide.md            # デプロイ手順書
 ```
 
-### 3. Claude 実行レイヤー
+### Lambda関数一覧
 
-```
-src/claude/
-├── executor.py            # Claude API 呼び出し
-├── skills/                # スキル実行ロジック
-│   ├── trend_collect.py
-│   ├── create_outline.py
-│   ├── x_post.py
-│   └── ...
-└── prompts/               # プロンプトテンプレート
-```
+| 関数名 | トリガー | 処理内容 |
+|--------|---------|---------|
+| `note-business-slack-bot` | API Gateway | Slackイベント処理（ボタン押下等） |
+| `note-business-daily-trend` | EventBridge (毎日8:00 JST) | トレンド収集→テーマ提案 |
+| `note-business-daily-xpost` | EventBridge (毎日12:00 JST) | X投稿案の生成→Slack送信 |
+| `note-business-weekly-reflection` | EventBridge (毎週月曜9:00 JST) | 振り返り→戦略更新提案 |
+
+---
 
 ## 自動化フロー
 
-### フロー1: 毎日のトレンド収集 → テーマ提案
+### フロー1: X投稿自動化（実装済み）
 
 ```
-[GitHub Actions: 毎日 8:00]
+[Lambda: 毎日 12:00 JST]
      │
      ▼
-[Claude: /trend-collect 実行]
+[Claude API: ツイート案を2-3個生成]
+     │ ルール参照: rules/x-posting-rules.md
+     │ 状態参照: output/state.json
+     ▼
+[Slack: レビュー依頼送信]
+     │
+     ├─ [✅ このまま投稿]
+     │        │
+     │        ▼
+     │   [X API: 自動投稿]
+     │        │
+     │        ▼
+     │   [Slack: 投稿完了通知 + URL]
+     │   [履歴更新: output/x_posts/post_history.md]
+     │
+     ├─ [✏️ 修正する]
+     │        │
+     │        ▼
+     │   [Slack: 修正モーダル表示]
+     │        │
+     │        ▼
+     │   [修正後、X APIで投稿]
+     │
+     └─ [❌ キャンセル]
+              │
+              ▼
+         [Slack: キャンセル通知]
+```
+
+### フロー2: トレンド収集→テーマ提案
+
+```
+[Lambda: 毎日 8:00 JST]
      │
      ▼
-[トレンドレポート生成]
-     │
+[Claude API: トレンド分析]
+     │ ルール参照: rules/strategy-rules.md
+     │ 学び参照: rules/ai-learnings.md
      ▼
-[Claude: テーマ3つ提案]
+[テーマ3案を生成]
      │
      ▼
 [Slack: テーマ選択メッセージ送信]
      │
-     ├─ [ユーザーがテーマ選択]
+     ├─ [1️⃣ を選択]
      │        │
      │        ▼
-     │   [GitHub Actions: /create-outline トリガー]
+     │   [state.json更新]
      │        │
      │        ▼
-     │   [Slack: 構成レビュー依頼]
+     │   [次: 構成作成フロー開始]
      │
-     └─ [24時間反応なし]
+     ├─ [🔄 別の提案]
+     │        │
+     │        ▼
+     │   [再度テーマ生成]
+     │
+     └─ [⏸️ 今日はスキップ]
               │
               ▼
-         [リマインダー送信]
+         [何もしない]
 ```
 
-### フロー2: 記事作成 → 公開
+### フロー3: 週次振り返り
 
 ```
-[構成承認後]
+[Lambda: 毎週月曜 9:00 JST]
      │
      ▼
-[Claude: /create-content 実行]
-     │
+[Claude API: 先週の活動を分析]
+     │ 参照: output/x_posts/post_history.md
+     │ 参照: output/state.json
+     │ 参照: rules/ai-learnings.md
      ▼
-[Claude: /review-article 実行]
-     │
+[振り返りレポート生成]
+     │ - 達成したこと
+     │ - 課題
+     │ - 学び
+     │ - 戦略更新提案
      ▼
-[Slack: 最終レビュー依頼]
+[Slack: レポート送信]
      │
-     ├─ [承認] → [note投稿リンク生成 + 宣伝ツイート提案]
-     └─ [修正依頼] → [修正後、再度レビュー依頼]
+     ├─ [📝 学びをルールに追記]
+     │        │
+     │        ▼
+     │   [rules/ai-learnings.md に追記]
+     │
+     └─ [✅ 戦略更新を採用]
+              │
+              ▼
+         [rules/strategy-rules.md を更新]
 ```
 
-### フロー3: X運用自動化
-
-```
-[記事公開後 or 定期スケジュール]
-     │
-     ▼
-[Claude: /x-promotion 実行]
-     │
-     ▼
-[Slack: ツイート案レビュー依頼]
-     │
-     ├─ [承認] → [/x-post で自動投稿] → [結果をSlackに通知]
-     └─ [修正] → [修正モーダル表示] → [修正後、再度確認]
-```
+---
 
 ## Slackメッセージ例
+
+### X投稿レビュー
+
+```
+🐦 ツイート投稿の提案
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+ADHDの「あとでやる」は永遠に来ない...😇
+
+だからChatGPTに外注することにした!
+
+具体的なプロンプト5つをnoteにまとめました👍
+https://note.com/xxx
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 文字数: 89/280 ✅
+💡 理由: 記事宣伝 + 共感を誘う導入
+
+[✅ このまま投稿] [✏️ 修正する] [❌ キャンセル]
+```
 
 ### テーマ提案
 
@@ -159,76 +210,89 @@ src/claude/
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
-**トレンド分析結果:**
-• Claude 3.5 Sonnet × 業務効率化が急上昇
-• 「先延ばし」関連の検索が継続的に高い
-
-**提案テーマ:**
-
 1️⃣ Claude × ADHD仕事術
-   └ 需要: 高 | 競合: 少
+   👥 ターゲット: Claude未経験のADHD当事者
+   💎 価値: 初期設定から使い方まで完全ガイド
+   🔥 需要: 高 | 🌟 競合: 少
 
 2️⃣ AI習慣化コーチ
-   └ 需要: 中 | 競合: 中
+   👥 ターゲット: 三日坊主に悩むADHD
+   💎 価値: AIで習慣を維持する仕組み
+   📈 需要: 中 | 🎯 競合: 中
 
 3️⃣ タスク管理プロンプト集
-   └ 需要: 高 | 競合: 多
+   👥 ターゲット: タスク管理ツールが続かない人
+   💎 価値: すぐ使えるプロンプト10選
+   🔥 需要: 高 | ⚔️ 競合: 多
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
-[1️⃣ を選択] [2️⃣ を選択] [3️⃣ を選択] [🔄 別の提案]
+[1️⃣ を選択] [2️⃣ を選択] [3️⃣ を選択] [🔄 別の提案] [⏸️ スキップ]
 ```
 
-### ツイートレビュー
+### 週次振り返り
 
 ```
-🐦 ツイート投稿の確認
+📊 週次振り返りレポート
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
-**投稿内容:**
-```
-ADHDの「あとでやる」は永遠に来ない...😇
+**サマリー**
+先週はX投稿を5件実施。エンゲージメント率は平均3.2%で前週比+0.5%。
 
-だからChatGPTに外注することにした!
+**✅ 達成したこと**
+• X投稿の定期化（毎日1件）
+• 共感ツイートの反応が良好
 
-具体的なプロンプト5つをnoteにまとめました👍
-https://note.com/xxx
-```
+**⚠️ 課題**
+• 記事宣伝ツイートのクリック率が低い
+• 投稿時間が不規則
 
-**文字数:** 89文字 ✅
+**💡 学び**
+• 「...!」で終わるツイートの反応が良い
+• 午後8時台の投稿が最も反応がある
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
-[✅ このまま投稿] [✏️ 修正する] [❌ キャンセル]
+**🎯 来週の注力ポイント**
+投稿時間を20:00に固定し、記事宣伝の表現を改善
+
+**🔧 戦略更新の提案**
+1. X運用: 投稿時間を「ランダム」→「20:00固定」に変更
+   [✅ 採用]
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+[📝 学びをルールに追記] [👍 確認済み]
 ```
+
+---
 
 ## 技術スタック
 
 | コンポーネント | 技術 | 備考 |
 |--------------|------|------|
-| スケジューラー | GitHub Actions | cron式でスケジュール |
-| Slack App | Slack Bolt (Python) | ソケットモード推奨 |
-| ホスティング | Railway / Heroku / AWS Lambda | Slack App用 |
-| AI実行 | Claude API (Anthropic SDK) | claude-3-5-sonnet |
-| 状態管理 | GitHub リポジトリ内JSON | シンプルに |
-| X投稿 | 既存の post_tweet.py | 流用 |
+| スケジューラー | AWS EventBridge | cron式で定期実行 |
+| イベント処理 | AWS Lambda (Python 3.11) | サーバーレス |
+| API エンドポイント | API Gateway | Slack Event受信 |
+| Slack App | Slack Bolt for Python | Lambda対応 |
+| AI実行 | Claude API | claude-3-5-sonnet-20241022 |
+| X投稿 | tweepy (X API v2) | 既存のpost_tweet.py流用 |
+| 状態管理 | リポジトリ内JSON | output/state.json |
+| IaC | AWS SAM | template.yaml |
 
-## 必要な設定
+---
 
-### 環境変数
+## 環境変数
 
 ```env
 # Slack
 SLACK_BOT_TOKEN=xoxb-xxx
-SLACK_APP_TOKEN=xapp-xxx  # ソケットモード用
 SLACK_SIGNING_SECRET=xxx
+SLACK_CHANNEL=#note-business
 
 # Claude
 ANTHROPIC_API_KEY=sk-ant-xxx
-
-# GitHub
-GITHUB_TOKEN=ghp_xxx
 
 # X (Twitter)
 X_API_KEY=xxx
@@ -237,65 +301,72 @@ X_ACCESS_TOKEN=xxx
 X_ACCESS_TOKEN_SECRET=xxx
 ```
 
-### Slack App 権限
+---
 
-```yaml
-oauth_scopes:
-  - chat:write
-  - chat:write.public
-  - commands
-  - files:write
-  - reactions:write
+## Slack App 権限
 
-event_subscriptions:
-  - message.channels
-  - app_mention
+### Bot Token Scopes
 
-interactivity:
-  - shortcuts
-  - interactive_messages
+```
+chat:write          # メッセージ送信
+chat:write.public   # パブリックチャンネルに送信
+commands            # スラッシュコマンド
+files:write         # ファイルアップロード
 ```
 
-## 実装ステップ
+### Interactivity
 
-### Step 1: Slack App 基盤 (1-2日)
-- [ ] Slack App 作成 (api.slack.com)
-- [ ] Slack Bolt セットアップ
-- [ ] 基本的なメッセージ送信確認
-- [ ] Railway/Herokuにデプロイ
-
-### Step 2: レビューフロー (2-3日)
-- [ ] 承認/却下ボタンのハンドラー
-- [ ] 修正モーダルの実装
-- [ ] GitHub Actions トリガー連携
-
-### Step 3: Claude 統合 (2-3日)
-- [ ] Claude API 呼び出しラッパー
-- [ ] スキルをAPI版に移植
-- [ ] 成果物 → Slackメッセージ変換
-
-### Step 4: GitHub Actions (1-2日)
-- [ ] 日次トレンド収集ワークフロー
-- [ ] 週次振り返りワークフロー
-- [ ] Slack承認 → 次ステップトリガー
-
-### Step 5: 統合テスト (1-2日)
-- [ ] エンドツーエンドテスト
-- [ ] エラーハンドリング
-- [ ] 本番運用開始
-
-## 次のアクション
-
-1. **Slack App 作成**: https://api.slack.com/apps で新規作成
-2. **ソケットモード有効化**: 常時接続のため
-3. **基本構造の実装開始**
+- Request URL: `https://xxx.execute-api.ap-northeast-1.amazonaws.com/Prod/slack/events`
 
 ---
 
-## 質問事項
+## 実装ステップ
 
-実装を始める前に確認:
+### Step 1: Slack App 基盤 ✅
+- [x] Slack Bolt セットアップ (src/slack/app.py)
+- [x] Lambda対応 (process_before_response=True)
+- [x] ボタンハンドラー実装
 
-1. **ホスティング先**: Railway / Heroku / Render / AWS のどれを使いますか？
-2. **Slackワークスペース**: 既存のワークスペースを使いますか？新規作成？
-3. **優先度**: まずどのフローから実装しますか？（トレンド収集 or X投稿 or 記事作成）
+### Step 2: X投稿レビューフロー ✅
+- [x] 承認/却下/修正ボタン
+- [x] 修正モーダル
+- [x] X API投稿実行
+- [x] 投稿履歴記録
+
+### Step 3: 定期実行Lambda ✅
+- [x] daily_xpost.py (毎日12:00)
+- [x] daily_trend.py (毎日8:00)
+- [x] weekly_reflection.py (毎週月曜9:00)
+
+### Step 4: AWS SAM テンプレート ✅
+- [x] template.yaml 作成
+- [x] 環境変数設定
+- [x] EventBridge スケジュール定義
+
+### Step 5: デプロイ ⏳
+- [ ] Slack App 作成 (api.slack.com)
+- [ ] AWS SAM デプロイ (`sam deploy --guided`)
+- [ ] Slack Interactivity URL 設定
+- [ ] 動作確認
+
+---
+
+## 費用見積もり
+
+| サービス | 月額見積もり |
+|---------|-------------|
+| Lambda | ~$0（無料枠: 100万リクエスト/月） |
+| API Gateway | ~$1（100万リクエストまで$3.50） |
+| CloudWatch Logs | ~$0.5 |
+| X API | ~$0.10（10投稿 × $0.01） |
+| Claude API | ~$1-5（使用量による） |
+| **合計** | **~$3-7/月** |
+
+---
+
+## 次のアクション
+
+1. **Slack App 作成**: https://api.slack.com/apps
+2. **AWS SAM デプロイ**: `docs/deploy-guide.md` 参照
+3. **動作確認**: `/note-status` コマンドでテスト
+4. **本番運用開始**
