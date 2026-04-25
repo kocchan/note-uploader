@@ -35,49 +35,144 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_TEAM_ID: ${{ secrets.SLACK_TEAM_ID }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
           X_API_KEY: ${{ secrets.X_API_KEY }}
           X_API_KEY_SECRET: ${{ secrets.X_API_KEY_SECRET }}
           X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
           X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
         run: |
           # イベントペイロードを環境変数に設定
-          export SLACK_CHANNEL="${{ github.event.client_payload.channel }}"
+          export SLACK_EVENT_CHANNEL="${{ github.event.client_payload.channel }}"
           export SLACK_USER="${{ github.event.client_payload.user }}"
           export SLACK_TEXT="${{ github.event.client_payload.text }}"
           export SLACK_TS="${{ github.event.client_payload.ts }}"
           export SLACK_THREAD_TS="${{ github.event.client_payload.thread_ts }}"
 
           claude -p "
-          Slack で @note-bot 宛にメッセージが送信されました。
+          Slack で @note-business-bot 宛にメッセージが送信されました。
 
           ## 受信内容
-          - チャンネル: $SLACK_CHANNEL
+          - チャンネル: $SLACK_EVENT_CHANNEL
           - ユーザー: $SLACK_USER
           - メッセージ: $SLACK_TEXT
           - スレッドTS: $SLACK_THREAD_TS
 
-          ## タスク
-          1. メッセージ内容を解析して、ユーザーが何を求めているか理解する
-          2. 適切なアクションを実行する:
-             - 「ツイートして」「投稿して」→ ツイート案を作成してSlackに返信
-             - 「テーマ提案」「ネタ」→ テーマ案を作成してSlackに返信
-             - 「状況」「ステータス」→ 現在の状況をSlackに返信
-             - その他 → 適切に対応
-          3. Slack MCP の slack_reply_to_thread を使ってスレッドに返信する
+          ## コマンド解析
+
+          メッセージを解析して、以下のどれに該当するか判断してください：
+
+          ### 1. スキル呼び出し（/で始まるコマンド）
+
+          メッセージに /スキル名 が含まれている場合、該当スキルを実行：
+
+          | コマンド | スキルファイル | 説明 |
+          |---------|--------------|------|
+          | /x-post | .claude/skills/x-post/SKILL.md | ツイートをXに投稿 |
+          | /x-promotion | .claude/skills/x-promotion/SKILL.md | 記事宣伝ツイート作成 |
+          | /x-engagement | .claude/skills/x-engagement/SKILL.md | 引用RT作成 |
+          | /trend-collect | .claude/skills/trend-collect/SKILL.md | トレンド収集 |
+          | /create-outline | .claude/skills/create-outline/SKILL.md | 記事構成作成 |
+          | /reflection | .claude/skills/reflection/SKILL.md | 振り返り |
+
+          **手順**: 該当する SKILL.md を読んで、その指示に従って実行する。
+
+          ### 2. ツイート提案（daily-xpost相当）
+
+          キーワード: 「ツイート提案」「ツイート案」「ツイートして」「投稿案」
+
+          **手順**:
+          1. rules/x-posting-rules.md を読んでルールを確認
+          2. rules/strategy-rules.md を読んで戦略を確認
+          3. output/articles/ フォルダを確認し、宣伝する記事があるか確認
+          4. ツイート案を2-3個作成
+          5. 以下の形式でSlackスレッドに返信:
+
+          ---
+          🐦 **ツイート提案**
+
+          【案1】📢 記事宣伝
+          \`\`\`
+          ツイート本文...
+          \`\`\`
+
+          【案2】💡 日常ツイート
+          \`\`\`
+          ツイート本文...
+          \`\`\`
+
+          ✅ 承認 / ❌ 却下 / ✏️ 修正依頼
+          ---
+
+          6. 返信後、slack_add_reaction で ✅ ❌ ✏️ を追加
+
+          ### 3. テーマ提案（daily-trend相当）
+
+          キーワード: 「テーマ提案」「テーマ案」「ネタ」「記事案」「何書こう」
+
+          **手順**:
+          1. rules/strategy-rules.md を読んで戦略ルールを確認
+          2. rules/ai-learnings.md を読んで過去の学びを確認
+          3. ADHD × AI活用をテーマに、記事テーマを3案作成
+          4. 以下の形式でSlackスレッドに返信:
+
+          ---
+          📝 **テーマ提案**
+
+          **1️⃣ テーマ名**
+          - ターゲット: ...
+          - 提供価値: ...
+          - 需要: 高 / 競合: 中
+          - 理由: ...
+
+          **2️⃣ テーマ名**
+          ...
+
+          **3️⃣ テーマ名**
+          ...
+
+          リアクションで選択してください！
+          ---
+
+          5. 返信後、slack_add_reaction で 1️⃣ 2️⃣ 3️⃣ 🔄 を追加
+
+          ### 4. 振り返り（weekly-reflection相当）
+
+          キーワード: 「振り返り」「レポート」「週次」「まとめ」
+
+          **手順**:
+          1. output/x_posts/post_history.md を読んで投稿履歴を確認
+          2. rules/ai-learnings.md を読んで過去の学びを確認
+          3. 振り返りレポートを作成してSlackスレッドに返信
+
+          ### 5. ステータス確認
+
+          キーワード: 「状況」「ステータス」「今どう」
+
+          **手順**:
+          1. output/ フォルダの状態を確認
+          2. 最近の投稿履歴を確認
+          3. 簡潔に状況をSlackスレッドに返信
+
+          ### 6. その他
+
+          上記に該当しない場合は、メッセージの意図を理解して適切に対応する。
 
           ## ルール参照
           - rules/x-posting-rules.md
           - rules/strategy-rules.md
+          - rules/ai-learnings.md
 
           ## 重要
           - 必ずスレッドに返信すること（thread_ts: $SLACK_THREAD_TS）
+          - スキル実行時は必ず SKILL.md を読んでから実行
           - 丁寧だが簡潔に返信すること
+          - リアクションが必要な提案の場合は、返信後に slack_add_reaction でリアクションを追加
           " --mcp-config mcp.json --dangerously-skip-permissions
 
       - name: Commit any changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add output/ || true
+          git add output/ rules/ || true
           git diff --staged --quiet || git commit -m "Update from Slack command $(date +%Y-%m-%d\ %H:%M)"
           git push || echo "Nothing to push"
