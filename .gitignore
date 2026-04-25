@@ -34,11 +34,6 @@ Thumbs.db
 # ログ
 *.log
 
-# AWS SAM
-.aws-sam/
-samconfig.toml
-.env.deploy
-
-# Lambda パッケージ
+# 一時ファイル
 *.zip
 response.json
