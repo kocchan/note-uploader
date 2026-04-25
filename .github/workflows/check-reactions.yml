@@ -1,14 +1,14 @@
 name: Check Slack Reactions & Execute
 
 on:
-  # Slack Workflow Builder からのトリガー
-  repository_dispatch:
-    types: [slack-reaction]
+  # 5分ごとにチェック（パブリックリポジトリなら無料）
+  schedule:
+    - cron: '*/5 * * * *'
   # 手動実行用
   workflow_dispatch:
-  # バックアップ: 1時間ごとにもチェック
-  schedule:
-    - cron: '0 * * * *'
+  # Slack Workflow Builder からのトリガー（有料Slack用）
+  repository_dispatch:
+    types: [slack-reaction]
 
 env:
   TZ: Asia/Tokyo
