@@ -18,25 +18,35 @@ except ImportError:
     print("実行: pip install tweepy")
     sys.exit(1)
 
-# python-dotenvがインストールされているか確認
+# python-dotenvはオプション（ローカル開発用）
 try:
     from dotenv import load_dotenv
+    HAS_DOTENV = True
 except ImportError:
-    print("Error: python-dotenvがインストールされていません")
-    print("実行: pip install python-dotenv")
-    sys.exit(1)
+    HAS_DOTENV = False
 
 
 def load_credentials():
-    """環境変数からX API認証情報を読み込む"""
-    # .envファイルを読み込む
-    env_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', '.env')
-    load_dotenv(env_path)
+    """環境変数からX API認証情報を読み込む
 
+    GitHub Secrets（CI/CD環境）または .envファイル（ローカル開発）から読み込む
+    """
+    # まず環境変数を直接チェック（GitHub Secrets等）
     api_key = os.getenv('X_API_KEY')
     api_key_secret = os.getenv('X_API_KEY_SECRET')
     access_token = os.getenv('X_ACCESS_TOKEN')
     access_token_secret = os.getenv('X_ACCESS_TOKEN_SECRET')
+
+    # 環境変数が未設定の場合、.envファイルからロードを試みる
+    if not all([api_key, api_key_secret, access_token, access_token_secret]):
+        if HAS_DOTENV:
+            env_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', '.env')
+            if os.path.exists(env_path):
+                load_dotenv(env_path)
+                api_key = os.getenv('X_API_KEY')
+                api_key_secret = os.getenv('X_API_KEY_SECRET')
+                access_token = os.getenv('X_ACCESS_TOKEN')
+                access_token_secret = os.getenv('X_ACCESS_TOKEN_SECRET')
 
     # 認証情報の確認
     missing = []
@@ -51,7 +61,7 @@ def load_credentials():
 
     if missing:
         print(f"Error: 以下の環境変数が設定されていません: {', '.join(missing)}")
-        print(f".envファイルを確認してください: {env_path}")
+        print("GitHub Secretsまたは.envファイルで設定してください")
         sys.exit(1)
 
     return api_key, api_key_secret, access_token, access_token_secret
