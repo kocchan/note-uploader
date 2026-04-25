@@ -1,13 +1,13 @@
-# デプロイガイド
+# デプロイガイド（GitHub Actions版）
 
-AWS Lambda + Slack Bolt でnote-businessを自動化する手順書。
+GitHub Actions + Slack でnote-businessを自動化する手順書。
 
 ## 前提条件
 
-- AWS アカウント
-- AWS CLI インストール済み & 設定済み
-- AWS SAM CLI インストール済み
+- GitHub リポジトリ
 - Slack ワークスペースの管理者権限
+- Claude API キー
+- X API クレデンシャル（設定済み）
 
 ---
 
@@ -27,243 +27,152 @@ AWS Lambda + Slack Bolt でnote-businessを自動化する手順書。
 
 ```
 chat:write          # メッセージ送信
-chat:write.public   # パブリックチャンネルに送信
-commands            # スラッシュコマンド
-files:write         # ファイルアップロード
+reactions:read      # リアクション読み取り
+reactions:write     # リアクション追加
+channels:history    # チャンネル履歴読み取り
+channels:read       # チャンネル一覧取得
 ```
 
-### 1.3 Interactivity 有効化
-
-**Interactivity & Shortcuts** → **Interactivity** をON
-
-Request URL は後で設定（Lambda デプロイ後）
-
-### 1.4 Slash Commands 作成（オプション）
-
-**Slash Commands** → **Create New Command**:
-
-| Command | Request URL | Description |
-|---------|-------------|-------------|
-| `/note-status` | (後で設定) | 現在の状態を表示 |
-| `/x-post-now` | (後で設定) | X投稿を手動実行 |
-
-### 1.5 トークン取得
+### 1.3 アプリをインストール
 
 **OAuth & Permissions** → **Install to Workspace**
 
-以下をメモ:
-- **Bot User OAuth Token**: `xoxb-xxx...`
-- **Signing Secret** (Basic Information内): `xxx...`
+### 1.4 トークン取得
+
+**Bot User OAuth Token** をコピー: `xoxb-xxx...`
 
 ---
 
-## Step 2: AWS 設定
+## Step 2: Slack チャンネル設定
 
-### 2.1 AWS CLI 確認
+### 2.1 チャンネル作成
 
-```bash
-aws --version
-aws sts get-caller-identity  # 認証確認
+Slackで `#note-business` チャンネルを作成（または既存チャンネルを使用）
+
+### 2.2 Bot をチャンネルに招待
+
+チャンネルで:
 ```
-
-### 2.2 SAM CLI インストール
-
-```bash
-# macOS
-brew install aws-sam-cli
-
-# 確認
-sam --version
-```
-
-### 2.3 環境変数設定
-
-```bash
-# .env.deploy ファイルを作成（ローカル用）
-cat > .env.deploy << 'EOF'
-SLACK_BOT_TOKEN=xoxb-your-token
-SLACK_SIGNING_SECRET=your-signing-secret
-ANTHROPIC_API_KEY=sk-ant-your-key
-X_API_KEY=your-x-api-key
-X_API_KEY_SECRET=your-x-api-secret
-X_ACCESS_TOKEN=your-x-access-token
-X_ACCESS_TOKEN_SECRET=your-x-access-token-secret
-SLACK_CHANNEL=#note-business
-EOF
+/invite @note-business-bot
 ```
 
 ---
 
-## Step 3: Lambda デプロイ
+## Step 3: GitHub Secrets 設定
 
-### 3.1 ビルド
+リポジトリの **Settings** → **Secrets and variables** → **Actions** で以下を設定:
 
-```bash
-cd /path/to/312_note
-sam build
-```
-
-### 3.2 デプロイ（初回）
-
-```bash
-sam deploy --guided
-```
-
-プロンプトに従って入力:
-
-```
-Stack Name: note-business-stack
-AWS Region: ap-northeast-1  # 東京リージョン
-Confirm changes before deploy: y
-Allow SAM CLI IAM role creation: y
-Save arguments to samconfig.toml: y
-
-# パラメータ入力
-SlackBotToken: xoxb-xxx
-SlackSigningSecret: xxx
-AnthropicApiKey: sk-ant-xxx
-XApiKey: xxx
-XApiKeySecret: xxx
-XAccessToken: xxx
-XAccessTokenSecret: xxx
-```
-
-### 3.3 デプロイ（2回目以降）
-
-```bash
-sam deploy
-```
-
-### 3.4 API Gateway URL 確認
-
-デプロイ完了後、出力される URL をメモ:
-
-```
-Outputs:
-SlackBotApi: https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/Prod/slack/events
-```
+| Secret名 | 値 | 取得元 |
+|---------|-----|-------|
+| `ANTHROPIC_API_KEY` | `sk-ant-xxx...` | https://console.anthropic.com |
+| `SLACK_BOT_TOKEN` | `xoxb-xxx...` | Slack App → OAuth & Permissions |
+| `SLACK_CHANNEL` | `#note-business` | 投稿先チャンネル名 |
+| `X_API_KEY` | `xxx` | X Developer Portal |
+| `X_API_KEY_SECRET` | `xxx` | X Developer Portal |
+| `X_ACCESS_TOKEN` | `xxx` | X Developer Portal |
+| `X_ACCESS_TOKEN_SECRET` | `xxx` | X Developer Portal |
 
 ---
 
-## Step 4: Slack App に URL 設定
+## Step 4: 動作確認
 
-### 4.1 Interactivity URL
+### 4.1 手動実行テスト
 
-**Interactivity & Shortcuts** → **Request URL**:
-```
-https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/Prod/slack/events
-```
+1. リポジトリの **Actions** タブを開く
+2. 左側から **Daily X Post Suggestions** を選択
+3. **Run workflow** → **Run workflow** をクリック
+4. 実行が完了するまで待つ（約1-2分）
 
-### 4.2 Slash Commands URL
+### 4.2 Slack 確認
 
-各コマンドの **Request URL** を同じURLに設定
+`#note-business` チャンネルにツイート提案が投稿されていることを確認
 
-### 4.3 Event Subscriptions（オプション）
+### 4.3 リアクションテスト
 
-**Event Subscriptions** → ON → **Request URL** を設定
-
-Subscribe to bot events:
-- `app_mention`
-- `message.channels`
+1. ツイート案に ✅ リアクションを追加
+2. **Check Slack Reactions & Execute** を手動実行
+3. X に投稿されたことを確認
 
 ---
 
-## Step 5: 動作確認
+## Step 5: 本番運用開始
 
-### 5.1 Slack でテスト
+すべての動作確認が完了したら、自動実行が開始されます:
 
-```
-/note-status
-```
-
-### 5.2 Lambda ログ確認
-
-```bash
-# CloudWatch Logs を確認
-aws logs tail /aws/lambda/note-business-slack-bot --follow
-```
-
-### 5.3 手動で定期実行をテスト
-
-```bash
-# X投稿提案をテスト
-aws lambda invoke \
-  --function-name note-business-daily-xpost \
-  --payload '{}' \
-  response.json
-
-cat response.json
-```
-
----
-
-## Step 6: チャンネル設定
-
-### 6.1 専用チャンネル作成
-
-Slackで `#note-business` チャンネルを作成
-
-### 6.2 Bot をチャンネルに追加
-
-チャンネルで `/invite @note-business-bot`
-
-### 6.3 環境変数にチャンネル設定
-
-Lambda のコンソールで環境変数 `SLACK_CHANNEL` を `#note-business` に設定
-
----
-
-## 定期実行スケジュール
-
-| Lambda | スケジュール | 内容 |
-|--------|-------------|------|
-| `daily-trend` | 毎日 8:00 JST | トレンド収集→テーマ提案 |
-| `daily-xpost` | 毎日 12:00 JST | X投稿案の提案 |
-| `weekly-reflection` | 毎週月曜 9:00 JST | 週次振り返り |
+| ワークフロー | スケジュール |
+|------------|-------------|
+| トレンド収集 | 毎日 8:00 JST |
+| ツイート提案 | 毎日 12:00 JST |
+| リアクションチェック | 毎時 |
+| 週次振り返り | 毎週月曜 9:00 JST |
 
 ---
 
 ## トラブルシューティング
 
-### Slack からのリクエストがタイムアウト
+### Slack にメッセージが投稿されない
 
-Slack は 3秒以内にレスポンスが必要。
+1. **Bot Token 確認**: Secrets の `SLACK_BOT_TOKEN` が正しいか
+2. **チャンネル招待**: Bot がチャンネルに招待されているか
+3. **権限確認**: `chat:write` スコープがあるか
 
-→ `process_before_response=True` を設定済み。
-→ 重い処理は別の Lambda で非同期実行
+### リアクションが検知されない
 
-### Lambda がタイムアウト
+1. **リアクション権限**: `reactions:read` スコープがあるか
+2. **チャンネル履歴**: `channels:history` スコープがあるか
+3. **Bot のリアクション**: Bot 自身のリアクションは無視される（人間のリアクションのみ検知）
 
-`template.yaml` の `Timeout` を増やす（最大 900秒）
+### X 投稿が失敗する
 
-### 認証エラー
+1. **API クレデンシャル**: Secrets が正しいか
+2. **API 残高**: X Developer Portal でクレジット残高を確認
+3. **文字数**: 280文字（Twitter換算）を超えていないか
 
-環境変数を確認:
-```bash
-aws lambda get-function-configuration \
-  --function-name note-business-slack-bot \
-  --query 'Environment.Variables'
+### GitHub Actions が実行されない
+
+1. **スケジュール**: cron は UTC 時間（JST - 9時間）
+2. **ワークフロー有効化**: Actions が無効になっていないか確認
+3. **ログ確認**: Actions → 該当ワークフロー → 失敗したジョブのログを確認
+
+---
+
+## ログの確認方法
+
+### GitHub Actions ログ
+
+1. リポジトリ → **Actions** タブ
+2. 実行履歴から確認したいワークフローを選択
+3. ジョブ → ステップを展開してログを確認
+
+### 投稿履歴
+
+```
+output/x_posts/post_history.md
+```
+
+### 保留中のツイート
+
+```
+output/pending_tweets/YYYYMMDD_slack.json
 ```
 
 ---
 
-## 費用見積もり
+## 費用
 
-| サービス | 月額見積もり |
-|---------|-------------|
-| Lambda | ~$0（無料枠内） |
-| API Gateway | ~$1 |
-| CloudWatch Logs | ~$0.5 |
-| **合計** | **~$1.5/月** |
-
-※ リクエスト数が少なければほぼ無料
+| サービス | 月額 |
+|---------|------|
+| GitHub Actions | **無料**（パブリックリポジトリ無制限、プライベート2,000分/月） |
+| Claude API | ~$1-5（使用量による） |
+| X API | ~$0.10（10投稿 × $0.01） |
+| **合計** | **~$1-6/月** |
 
 ---
 
 ## 次のステップ
 
 1. ✅ Slack App 作成
-2. ✅ Lambda デプロイ
-3. ✅ Interactivity 設定
+2. ✅ GitHub Secrets 設定
+3. ✅ 手動実行テスト
 4. □ 本番運用開始
-5. □ 必要に応じてスケジュール調整
+5. □ 運用しながらルールを調整

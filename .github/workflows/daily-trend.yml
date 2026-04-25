@@ -1,0 +1,54 @@
+name: Daily Trend Collection
+
+on:
+  schedule:
+    # 毎日 8:00 JST (23:00 UTC previous day)
+    - cron: '0 23 * * *'
+  workflow_dispatch:  # 手動実行用
+
+env:
+  TZ: Asia/Tokyo
+
+jobs:
+  collect-trends:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install anthropic slack-sdk
+
+      - name: Generate theme suggestions
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python scripts/generate_themes.py > themes.json
+          cat themes.json
+
+      - name: Post themes to Slack
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+        run: |
+          python scripts/post_themes_to_slack.py themes.json
+
+      - name: Save theme data
+        run: |
+          mkdir -p output/pending_themes
+          cp themes.json output/pending_themes/$(date +%Y%m%d).json
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add output/
+          git diff --staged --quiet || git commit -m "Add theme suggestions for $(date +%Y-%m-%d)"
+          git push || echo "Nothing to push"

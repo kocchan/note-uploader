@@ -1,0 +1,54 @@
+name: Weekly Reflection
+
+on:
+  schedule:
+    # 毎週月曜 9:00 JST (00:00 UTC)
+    - cron: '0 0 * * 1'
+  workflow_dispatch:  # 手動実行用
+
+env:
+  TZ: Asia/Tokyo
+
+jobs:
+  reflection:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install anthropic slack-sdk
+
+      - name: Generate reflection report
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python scripts/generate_reflection.py > reflection.json
+          cat reflection.json
+
+      - name: Post to Slack
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+        run: |
+          python scripts/post_reflection_to_slack.py reflection.json
+
+      - name: Save reflection
+        run: |
+          mkdir -p output/strategy
+          cp reflection.json output/strategy/$(date +%Y%m%d)_reflection.json
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add output/
+          git diff --staged --quiet || git commit -m "Add weekly reflection $(date +%Y-%m-%d)"
+          git push || echo "Nothing to push"
