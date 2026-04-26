@@ -15,10 +15,12 @@
 
 ```
 rules/
-├── README.md           # ルールの使い方
-├── strategy-rules.md   # 戦略ルール（人間が記載）
-├── writing-rules.md    # 執筆ルール（人間が記載）
-└── ai-learnings.md     # AI学習ログ（/reflection で追記）
+├── README.md            # ルールの使い方
+├── strategy-rules.md    # 戦略ルール（人間が記載）
+├── writing-rules.md     # 執筆ルール（人間が記載）
+├── x-posting-rules.md   # X投稿ルール
+├── ai-learnings.md      # AI学習ログ（/reflection で追記）
+└── success_patterns.md  # 成功パターン集
 ```
 
 これらのルールに従って作業を進めること。
@@ -79,8 +81,16 @@ rules/
 312_note/
 ├── CLAUDE.md                    # このファイル
 ├── rules/                       # ルール・ナレッジベース
+├── docs/                        # ドキュメント類
+│   ├── note戦略.md              # 初期戦略ドキュメント
+│   ├── アカウント.md            # プロフィール案
+│   ├── requirements.md          # 要件定義
+│   ├── deploy-guide.md          # デプロイガイド
+│   └── phase2-automation.md     # Phase2自動化計画
+├── input/                       # 参考資料
+│   └── reference_articles/      # 参考記事
 ├── output/
-│   ├── strategy/                # トレンドレポート・分析・振り返り
+│   ├── strategy/                # トレンドレポート・分析
 │   ├── articles/                # 記事ごとのフォルダ
 │   │   └── YYYYMMDD_テーマ名/
 │   │       ├── intent.md        # 狙いドキュメント
@@ -89,7 +99,10 @@ rules/
 │   │       ├── draft_revised.md # 修正済み本文
 │   │       └── prompts.md       # プロンプト集
 │   └── x_posts/                 # ツイート案
-└── .claude/skills/              # スキル定義
+├── cloudflare/                  # Slack Webhook Worker
+└── .claude/
+    ├── agents/                  # サブエージェント定義
+    └── skills/                  # スキル定義
 ```
 
 ## コマンド例

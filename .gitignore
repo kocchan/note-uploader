@@ -16,6 +16,9 @@ ENV/
 # 仮想環境
 .claude/skills/x-post/venv/
 
+# Claude worktrees
+.claude/worktrees/
+
 # OS
 .DS_Store
 .DS_Store?
