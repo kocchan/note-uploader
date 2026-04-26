@@ -10,8 +10,8 @@
 
 **必ず以下のファイルを読み込んでから作業を開始すること:**
 
-1. `rules/strategy-rules.md` - 戦略ルール（ターゲット、価格設定、差別化）
-2. `rules/ai-learnings.md` - 過去の学び（何が売れたか、売れなかったか）
+1. `.claude/rules/strategy-rules.md` - 戦略ルール（ターゲット、価格設定、差別化）
+2. `.claude/rules/ai-learnings.md` - 過去の学び（何が売れたか、売れなかったか）
 
 ## 主なタスク
 
@@ -90,7 +90,7 @@
 記事公開後、`/reflection` で:
 - 提案したテーマの妥当性を検証
 - 需要予測と実際の結果を比較
-- 学びを `rules/ai-learnings.md` に蓄積
+- 学びを `.claude/rules/ai-learnings.md` に蓄積
 
 ## 呼び出し方
 

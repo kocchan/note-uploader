@@ -5,8 +5,8 @@
 ## ルール参照（必須）
 
 実行前に以下のファイルを読み込み、ルールに従ってレビューすること:
-- `rules/writing-rules.md` - 執筆ルール（文体、NGパターン、品質基準）
-- `rules/ai-learnings.md` - 過去の反省から学んだナレッジ
+- `.claude/rules/writing-rules.md` - 執筆ルール（文体、NGパターン、品質基準）
+- `.claude/rules/ai-learnings.md` - 過去の反省から学んだナレッジ
 
 ## 目的
 

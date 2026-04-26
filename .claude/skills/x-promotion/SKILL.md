@@ -5,9 +5,9 @@
 ## ルール参照（必須）
 
 実行前に以下のファイルを読み込み、ルールに従って実行すること:
-- `rules/x-posting-rules.md` - **X投稿ルール（ツイート文体を必ず守る）**
-- `rules/strategy-rules.md` - 戦略ルール（ターゲット、プロモーション方針）
-- `rules/ai-learnings.md` - 過去の反省から学んだナレッジ（ツイートの反応傾向など）
+- `.claude/rules/x-posting-rules.md` - **X投稿ルール（ツイート文体を必ず守る）**
+- `.claude/rules/strategy-rules.md` - 戦略ルール（ターゲット、プロモーション方針）
+- `.claude/rules/ai-learnings.md` - 過去の反省から学んだナレッジ（ツイートの反応傾向など）
 
 ## 目的
 

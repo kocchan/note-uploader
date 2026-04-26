@@ -5,9 +5,9 @@
 ## ルール参照（必須）
 
 実行前に以下のファイルを読み込み、全体の方針を確認すること:
-- `rules/strategy-rules.md` - 戦略ルール（全体の方針、ターゲット）
-- `rules/writing-rules.md` - 執筆ルール（品質基準）
-- `rules/ai-learnings.md` - 過去の反省から学んだナレッジ
+- `.claude/rules/strategy-rules.md` - 戦略ルール（全体の方針、ターゲット）
+- `.claude/rules/writing-rules.md` - 執筆ルール（品質基準）
+- `.claude/rules/ai-learnings.md` - 過去の反省から学んだナレッジ
 
 ## 目的
 

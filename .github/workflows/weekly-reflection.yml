@@ -44,8 +44,8 @@ jobs:
           ## 手順
 
           1. output/x_posts/post_history.md を読んで投稿履歴を確認
-          2. rules/ai-learnings.md を読んで過去の学びを確認
-          3. rules/strategy-rules.md を読んで現在の戦略を確認
+          2. .claude/rules/ai-learnings.md を読んで過去の学びを確認
+          3. .claude/rules/strategy-rules.md を読んで現在の戦略を確認
           4. 週次振り返りレポートを作成
           5. Slack MCP を使って #note-business チャンネル（$SLACK_CHANNEL）に投稿
 
@@ -102,6 +102,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add output/ rules/ || true
+          git add output/ .claude/rules/ || true
           git diff --staged --quiet || git commit -m "Add weekly reflection $(date +%Y-%m-%d)"
           git push || echo "Nothing to push"

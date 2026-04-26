@@ -67,7 +67,7 @@
 │      ┌────────────────────┼────────────────────┐                │
 │      ▼                    ▼                    ▼                │
 │  ┌─────────────┐  ┌─────────────────┐  ┌─────────────┐         │
-│  │ rules/      │  │ output/         │  │ X API       │         │
+│  │ .claude/rules/      │  │ output/         │  │ X API       │         │
 │  │             │  │                 │  │ (tweepy)    │         │
 │  │ ルール参照  │  │ 結果を保存      │  │             │         │
 │  │             │  │                 │  │ ツイート    │         │
@@ -184,7 +184,7 @@ GitHub Actions の /x-post ワークフローを実行してください：
 │       ├── x-post.yml            # X投稿（手動トリガー）
 │       ├── daily-reminder.yml    # 毎日12:00: Slack にリマインド
 │       └── weekly-reflection.yml # 毎週月曜: 振り返りレポート
-├── rules/
+├── .claude/rules/
 │   ├── x-posting-rules.md        # X投稿ルール
 │   ├── strategy-rules.md         # 戦略ルール
 │   └── ai-learnings.md           # AI学習ログ

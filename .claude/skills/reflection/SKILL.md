@@ -5,10 +5,10 @@
 ## ルール参照・更新（必須）
 
 実行前に以下のファイルを読み込むこと:
-- `rules/strategy-rules.md` - 戦略ルール（期待値の基準として参照）
-- `rules/ai-learnings.md` - 過去の反省ログ（追記先）
+- `.claude/rules/strategy-rules.md` - 戦略ルール（期待値の基準として参照）
+- `.claude/rules/ai-learnings.md` - 過去の反省ログ（追記先）
 
-**重要**: 内省完了後、学んだナレッジを `rules/ai-learnings.md` に追記すること。
+**重要**: 内省完了後、学んだナレッジを `.claude/rules/ai-learnings.md` に追記すること。
 
 ## 目的
 
@@ -134,7 +134,7 @@
 
 ### 6. 学びを蓄積
 
-`rules/ai-learnings.md` に追記:
+`.claude/rules/ai-learnings.md` に追記:
 
 ```markdown
 ## YYYY/MM/DD - [記事タイトル]
@@ -153,7 +153,7 @@
 ## 出力先
 
 - `output/strategy/YYYYMMDD_reflection.md` に保存
-- `rules/ai-learnings.md` に追記
+- `.claude/rules/ai-learnings.md` に追記
 
 ## 引数
 

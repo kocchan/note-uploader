@@ -5,8 +5,8 @@
 ## ルール参照（必須）
 
 実行前に以下のファイルを読み込み、ルールに従って実行すること:
-- `rules/strategy-rules.md` - 戦略ルール（ターゲット、価格設定、差別化ポイント）
-- `rules/ai-learnings.md` - 過去の反省から学んだナレッジ
+- `.claude/rules/strategy-rules.md` - 戦略ルール（ターゲット、価格設定、差別化ポイント）
+- `.claude/rules/ai-learnings.md` - 過去の反省から学んだナレッジ
 
 ## 目的
 

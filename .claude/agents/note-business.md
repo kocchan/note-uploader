@@ -11,7 +11,7 @@
 ### 1. ルールの読み込み
 
 ```
-rules/
+.claude/rules/
 ├── strategy-rules.md   # 戦略ルール
 ├── writing-rules.md    # 執筆ルール
 └── ai-learnings.md     # 過去の学び
@@ -71,7 +71,7 @@ note-business（このエージェント）
 
 4. 振り返りフェーズ
    └─ /reflection で狙い vs 結果を分析
-      └─ 学びを rules/ai-learnings.md に蓄積
+      └─ 学びを .claude/rules/ai-learnings.md に蓄積
 ```
 
 ## コマンド対応表

@@ -14,7 +14,7 @@
 **すべての作業を開始する前に、以下のルールファイルを読み込むこと:**
 
 ```
-rules/
+.claude/rules/
 ├── README.md            # ルールの使い方
 ├── strategy-rules.md    # 戦略ルール（人間が記載）
 ├── writing-rules.md     # 執筆ルール（人間が記載）
@@ -72,7 +72,7 @@ rules/
 
 【振り返りフェーズ】
   /reflection（狙い vs 結果の比較）
-     ↓ 学習を rules/ai-learnings.md に追記
+     ↓ 学習を .claude/rules/ai-learnings.md に追記
 ```
 
 ## フォルダ構成
@@ -80,7 +80,6 @@ rules/
 ```
 312_note/
 ├── CLAUDE.md                    # このファイル
-├── rules/                       # ルール・ナレッジベース
 ├── docs/                        # ドキュメント類
 │   ├── note戦略.md              # 初期戦略ドキュメント
 │   ├── アカウント.md            # プロフィール案
@@ -102,7 +101,8 @@ rules/
 ├── cloudflare/                  # Slack Webhook Worker
 └── .claude/
     ├── agents/                  # サブエージェント定義
-    └── skills/                  # スキル定義
+    ├── skills/                  # スキル定義
+    └── .claude/rules/                   # ルール・ナレッジベース
 ```
 
 ## コマンド例

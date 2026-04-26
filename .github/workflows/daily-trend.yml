@@ -43,8 +43,8 @@ jobs:
 
           ## 手順
 
-          1. rules/strategy-rules.md を読んで戦略ルールを確認
-          2. rules/ai-learnings.md を読んで過去の学びを確認
+          1. .claude/rules/strategy-rules.md を読んで戦略ルールを確認
+          2. .claude/rules/ai-learnings.md を読んで過去の学びを確認
           3. ADHD × AI活用をテーマに、記事テーマを3案作成
           4. Slack MCP を使って #note-business チャンネル（$SLACK_CHANNEL）に投稿
 
@@ -100,6 +100,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add output/ rules/ || true
+          git add output/ .claude/rules/ || true
           git diff --staged --quiet || git commit -m "Update from daily trend $(date +%Y-%m-%d)"
           git push || echo "Nothing to push"

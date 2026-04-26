@@ -10,9 +10,9 @@
 
 **必ず以下のファイルを読み込んでから作業を開始すること:**
 
-1. `rules/strategy-rules.md` - 戦略ルール
-2. `rules/writing-rules.md` - 執筆ルール
-3. `rules/ai-learnings.md` - 過去の学び
+1. `.claude/rules/strategy-rules.md` - 戦略ルール
+2. `.claude/rules/writing-rules.md` - 執筆ルール
+3. `.claude/rules/ai-learnings.md` - 過去の学び
 
 ## ワークフロー
 

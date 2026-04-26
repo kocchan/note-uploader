@@ -44,8 +44,8 @@ jobs:
 
           ## 手順
 
-          1. rules/x-posting-rules.md を読んでルールを確認
-          2. rules/strategy-rules.md を読んで戦略を確認
+          1. .claude/rules/x-posting-rules.md を読んでルールを確認
+          2. .claude/rules/strategy-rules.md を読んで戦略を確認
           3. output/articles/ フォルダを確認し、宣伝する記事があるか確認
           4. ツイート案を2-3個作成（記事があれば宣伝ツイート、なければ日常ツイート）
           5. Slack MCP を使って #note-business チャンネル（$SLACK_CHANNEL）に投稿

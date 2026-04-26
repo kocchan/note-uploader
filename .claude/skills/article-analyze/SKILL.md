@@ -5,9 +5,9 @@
 ## ルール参照（必須）
 
 実行前に以下のファイルを読み込み、分析の基準とすること:
-- `rules/strategy-rules.md` - 戦略ルール（ターゲット、差別化ポイントとの比較用）
-- `rules/writing-rules.md` - 執筆ルール（成功記事との比較用）
-- `rules/ai-learnings.md` - 過去の反省から学んだナレッジ
+- `.claude/rules/strategy-rules.md` - 戦略ルール（ターゲット、差別化ポイントとの比較用）
+- `.claude/rules/writing-rules.md` - 執筆ルール（成功記事との比較用）
+- `.claude/rules/ai-learnings.md` - 過去の反省から学んだナレッジ
 
 ## 目的
 
