@@ -1,134 +1,140 @@
-# ADHD向けnote有料記事ビジネス
+# note有料記事ビジネス
 
-このプロジェクトは、ADHD当事者向けのAI活用術をテーマにしたnote有料記事ビジネスを運営するためのものです。
+このプロジェクトは、AIエージェントを使ってnote有料記事ビジネスを運営するためのものです。
 
-## プロジェクト概要
+---
 
-- **ターゲット**: 大人のADHD当事者（診断済み or グレーゾーン）
-- **コンテンツ**: ADHD × AI活用術の有料記事（1,980円）
-- **プラットフォーム**: note
+## テーマ設定（変更可能）
+
+> **この設定を変更すると、別のトピックでも同じ仕組みで運営できます**
+
+### ターゲット
+- **誰向け**: 大人のADHD当事者（診断済み or グレーゾーン）
+- **年齢層**: 20代後半〜40代の社会人
+- **状況**: 仕事での困りごとを抱えている、「なんとかしたい」という意欲がある
+
+### テーマ
+- **メインテーマ**: ADHD × AI活用術
+- **コンセプト**: 「意志力に頼らず、AIで脳のバグを補う」
+
+### 価格設定
+- **メイン記事**: 1,980円
+- **軽めの記事**: 980円
+- **大作・完全版**: 2,980円
+
+### プラットフォーム
+- **記事公開**: note
 - **プロモーション**: X（旧Twitter）
 
-## ルール参照（必須）
+---
 
-**すべての作業を開始する前に、以下のルールファイルを読み込むこと:**
-
-```
-.claude/rules/
-├── README.md            # ルールの使い方
-├── strategy-rules.md    # 戦略ルール（人間が記載）
-├── writing-rules.md     # 執筆ルール（人間が記載）
-├── x-posting-rules.md   # X投稿ルール
-├── ai-learnings.md      # AI学習ログ（/reflection で追記）
-└── success_patterns.md  # 成功パターン集
-```
-
-これらのルールに従って作業を進めること。
-
-## 利用可能なサブエージェント
+## エージェント構成
 
 | エージェント | 役割 | 呼び出し例 |
 |-------------|------|-----------|
-| `note-business` | ビジネス全体を統括 | 「記事を書きたい」「状況を教えて」 |
-| `strategy-planner` | 戦略立案・テーマ提案 | 「次のネタを考えて」「競合を分析して」 |
-| `note-writer` | 記事作成の全工程 | 「構成を作って」「本文を書いて」 |
-| `x-manager` | X運用・プロモーション | 「宣伝ツイートを作って」 |
+| `note-content-strategist` | ネタ出し・壁打ち・ネタ帳管理 | 「ネタを考えて」「ネタ帳確認して」 |
+| `note-writer` | note記事を作成 | 「記事を書いて」「先延ばし対策の記事を作って」 |
+| `x-quote-tweet` | 引用ツイートを考える | 「このツイートに引用RTして」 |
+| `x-promotion` | 記事の宣伝ツイートを作成 | 「宣伝ツイート作って」 |
+| `x-post` | Xに投稿する | 「ポストして」「このツイートを投稿して」 |
 
-サブエージェントは `.claude/agents/` に定義されています。
+エージェント定義は `.claude/agents/` にあります。
 
-## 利用可能なスキル
+---
 
-| スキル | 用途 | フェーズ |
-|--------|------|----------|
-| `/trend-collect` | トレンド収集・記事ネタ発掘 | 戦略 |
-| `/article-analyze` | 人気記事の分析 | 戦略 |
-| `/create-outline` | タイトル・構成・狙いドキュメント作成 | 作成 |
-| `/create-content` | 記事本文の執筆 | 作成 |
-| `/review-article` | AIっぽさチェック・修正 | 作成 |
-| `/reflection` | 公開後の振り返り・学習 | 振り返り |
-| `/x-engagement` | 引用RT用ツイート作成 | X運用 |
-| `/x-promotion` | 記事宣伝ツイート作成 | X運用 |
-| `/x-post` | X APIでツイート自動投稿（人間承認後） | X運用 |
-| `/orchestrate` | 全体ワークフロー管理 | 管理 |
+## 実行環境
 
-## 標準ワークフロー
+| 環境 | 説明 |
+|------|------|
+| **Claude CLI** | ローカルでエージェントを実行 |
+| **Claude for Slack** | `@Claude` でエージェントを実行 |
+
+※ Claude API は使用しない（Maxプラン内で完結）
+
+---
+
+## ワークフロー
+
+### ネタ出し・企画
+```
+「ネタを考えて」
+  ↓
+note-content-strategist が提案 → 壁打ち → ネタ帳に保存
+  ↓
+「ネタ帳確認して」でいつでも一覧確認
+```
+
+### 記事作成
+```
+「記事を書いて」
+  ↓
+note-writer が構成 → 本文 → レビュー
+  ↓
+人間が最終確認 → noteに投稿
+```
+
+### X運用
+```
+「宣伝ツイート作って」 → x-promotion → ツイート案
+  ↓
+「ポストして」 → x-post → X API経由で投稿
+```
+
+### 引用RT
+```
+「このツイートに引用RTして」 → x-quote-tweet → 引用ツイート案
+  ↓
+「ポストして」 → x-post → X API経由で投稿
+```
+
+---
+
+## ルール参照
+
+エージェントは以下のルールを参照します:
 
 ```
-【戦略フェーズ】
-  /trend-collect → /article-analyze
-     ↓ テーマ提案
-  【人間】テーマを選択・承認
-
-【作成フェーズ】
-  /create-outline（狙いドキュメント作成）
-     ↓ タイトル・目次
-  【人間】構成をレビュー
-     ↓
-  /create-content
-     ↓ 記事本文
-  /review-article
-     ↓ AIっぽさ修正
-  【人間】最終確認 → noteに手動投稿
-
-【振り返りフェーズ】
-  /reflection（狙い vs 結果の比較）
-     ↓ 学習を .claude/rules/ai-learnings.md に追記
+.claude/rules/
+├── strategy-rules.md   # 戦略ルール
+├── writing-rules.md    # 執筆ルール
+├── x-posting-rules.md  # X投稿ルール
+└── ai-learnings.md     # 学習ログ
 ```
+
+---
 
 ## フォルダ構成
 
 ```
 312_note/
-├── CLAUDE.md                    # このファイル
-├── docs/                        # ドキュメント類
-│   ├── note戦略.md              # 初期戦略ドキュメント
-│   ├── アカウント.md            # プロフィール案
-│   ├── requirements.md          # 要件定義
-│   ├── deploy-guide.md          # デプロイガイド
-│   └── phase2-automation.md     # Phase2自動化計画
-├── input/                       # 参考資料
-│   └── reference_articles/      # 参考記事
+├── CLAUDE.md                    # このファイル（設定）
+├── docs/                        # ドキュメント
+├── .claude/
+│   ├── agents/                  # エージェント定義
+│   │   ├── note-content-strategist.md
+│   │   ├── note-writer.md
+│   │   ├── x-quote-tweet.md
+│   │   ├── x-promotion.md
+│   │   └── x-post.md
+│   ├── rules/                   # ルール
+│   └── skills/
+│       └── x-post/              # X投稿スクリプト
+├── .github/
+│   └── workflows/
+│       └── x-post.yml           # X API呼び出し用
 ├── output/
-│   ├── strategy/                # トレンドレポート・分析
-│   ├── articles/                # 記事ごとのフォルダ
-│   │   └── YYYYMMDD_テーマ名/
-│   │       ├── intent.md        # 狙いドキュメント
-│   │       ├── outline.md       # 構成案
-│   │       ├── draft.md         # 記事本文
-│   │       ├── draft_revised.md # 修正済み本文
-│   │       └── prompts.md       # プロンプト集
-│   └── x_posts/                 # ツイート案
-├── cloudflare/                  # Slack Webhook Worker
-└── .claude/
-    ├── agents/                  # サブエージェント定義
-    ├── skills/                  # スキル定義
-    └── .claude/rules/                   # ルール・ナレッジベース
+│   ├── content_ideas/           # ネタ帳
+│   │   └── ideas.json
+│   ├── articles/                # 記事出力
+│   └── x_posts/                 # ツイート履歴
+└── input/
+    └── reference_articles/      # 参考記事
 ```
 
-## コマンド例
-
-```bash
-# 新しい記事の作成を開始
-/orchestrate
-
-# トレンドを収集
-/trend-collect
-
-# 特定テーマで構成作成
-/create-outline 先延ばし癖をChatGPTで潰す
-
-# 記事の振り返り
-/reflection 20260425_先延ばし攻略
-
-# X投稿（人間承認後に自動投稿）
-/x-promotion 20260425_先延ばし攻略  # ツイート案作成
-/x-post "承認されたツイート本文"     # X APIで投稿
-/x-post promotion                   # 最新の宣伝ツイートを投稿
-```
+---
 
 ## 注意事項
 
-- 各フェーズで人間の承認が必要なポイントがある
-- rulesフォルダのルールに必ず従う
-- 狙いドキュメント（intent.md）は振り返りまで保持
+- 各フェーズで人間の承認が必要
 - AIっぽい文章を避け、当事者目線で書く
+- X投稿前は必ず文字数を確認（日本語は140文字以内）

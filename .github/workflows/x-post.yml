@@ -1,0 +1,66 @@
+name: X Post
+
+on:
+  workflow_dispatch:
+    inputs:
+      tweet:
+        description: 'ツイート本文'
+        required: true
+        type: string
+      quote_tweet_id:
+        description: '引用RTの場合、元ツイートのID（オプション）'
+        required: false
+        type: string
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install tweepy python-dotenv
+
+      - name: Post to X
+        env:
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_KEY_SECRET: ${{ secrets.X_API_KEY_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+        run: |
+          python << 'EOF'
+          import tweepy
+          import os
+          import sys
+
+          # 認証
+          client = tweepy.Client(
+              consumer_key=os.environ['X_API_KEY'],
+              consumer_secret=os.environ['X_API_KEY_SECRET'],
+              access_token=os.environ['X_ACCESS_TOKEN'],
+              access_token_secret=os.environ['X_ACCESS_TOKEN_SECRET']
+          )
+
+          tweet_text = """${{ inputs.tweet }}"""
+          quote_tweet_id = "${{ inputs.quote_tweet_id }}" or None
+
+          try:
+              if quote_tweet_id:
+                  response = client.create_tweet(text=tweet_text, quote_tweet_id=quote_tweet_id)
+              else:
+                  response = client.create_tweet(text=tweet_text)
+
+              tweet_id = response.data['id']
+              print(f"✅ 投稿成功!")
+              print(f"Tweet ID: {tweet_id}")
+              print(f"URL: https://x.com/i/status/{tweet_id}")
+          except Exception as e:
+              print(f"❌ 投稿失敗: {e}")
+              sys.exit(1)
+          EOF
